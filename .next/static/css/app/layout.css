@@ -705,6 +705,9 @@ video {
 .mr-4 {
   margin-right: 1rem;
 }
+.mt-0\.5 {
+  margin-top: 0.125rem;
+}
 .mt-1 {
   margin-top: 0.25rem;
 }
@@ -725,9 +728,6 @@ video {
 }
 .mt-8 {
   margin-top: 2rem;
-}
-.mt-0\.5 {
-  margin-top: 0.125rem;
 }
 .line-clamp-2 {
   overflow: hidden;
@@ -2382,9 +2382,5 @@ main {
 
   .lg\:grid-cols-3 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .lg\:grid-cols-5 {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 }
