@@ -97,6 +97,10 @@ export default function Home() {
                     onClick={() => {
                       if (card.id === 'ganado') {
                         router.push('/ganado')
+                      } else if (card.id === 'finca') {
+                        router.push('/finca')
+                      } else if (card.id === 'productos') {
+                        router.push('/productos')
                       }
                     }}
                     className="
