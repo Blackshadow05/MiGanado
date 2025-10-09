@@ -749,7 +749,7 @@ export default function DetalleAnimalPage() {
             <div className="h-1 w-20 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full mx-auto"></div>
           </div>
           <p className="text-gray-600 mt-3 text-sm sm:text-base">
-            Información completa del animal #{animal.id_animal || 'N/A'}
+            Información completa de {animal.id_animal || 'N/A'}
           </p>
         </div>
 
@@ -771,20 +771,20 @@ export default function DetalleAnimalPage() {
             </div>
 
             <div className="relative z-10">
-              <div className="flex justify-between items-start mb-4">
-                <div className="flex-1">
-                  <h2 className="text-2xl font-bold text-white mb-1">
-                    Animal #{' '}{animal.id_animal || 'N/A'}
-                  </h2>
-                  <p className="text-white/80 text-lg truncate">
-                    {animal.farm_nombre || 'Sin finca'}
-                  </p>
-                </div>
-                <div className="ml-4 flex items-center space-x-2">
+            <div className="flex flex-col sm:flex-row justify-between items-start mb-4 gap-4">
+              <div className="flex-1 min-w-0">
+                <h2 className="text-2xl font-bold text-white mb-1 break-words">
+                  {animal.id_animal || 'N/A'}
+                </h2>
+                <p className="text-white/80 text-lg truncate">
+                  {animal.farm_nombre || 'Sin finca'}
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 sm:space-x-2 sm:ml-4">
                   <button
                     onClick={abrirModalEdicion}
-                    className="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-full transition-all duration-300 transform hover:scale-110"
-                    title="Editar animal"
+                    className="p-3 bg-blue-500 hover:bg-blue-600 text-white rounded-full transition-all duration-300 transform hover:scale-110 flex-shrink-0"
+                    title="Editar"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -793,8 +793,8 @@ export default function DetalleAnimalPage() {
                   {!animal.fecha_venta && (
                     <button
                       onClick={abrirModalVenta}
-                      className="p-2 bg-green-500 hover:bg-green-600 text-white rounded-full transition-all duration-300 transform hover:scale-110"
-                      title="Vender animal"
+                      className="p-3 bg-green-500 hover:bg-green-600 text-white rounded-full transition-all duration-300 transform hover:scale-110 flex-shrink-0"
+                      title="Vender"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
@@ -803,15 +803,15 @@ export default function DetalleAnimalPage() {
                   )}
                   <button
                     onClick={abrirModalEliminacion}
-                    className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-full transition-all duration-300 transform hover:scale-110"
-                    title="Eliminar animal"
+                    className="p-3 bg-red-500 hover:bg-red-600 text-white rounded-full transition-all duration-300 transform hover:scale-110 flex-shrink-0"
+                    title="Eliminar"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
                   </button>
                   <span className={`
-                    px-3 py-1 rounded-full text-xs font-bold sm:text-sm sm:px-4 sm:py-2
+                    px-3 py-2 rounded-full text-sm font-bold flex-shrink-0
                     ${animal.fecha_venta
                       ? 'bg-red-600 text-white'
                       : 'bg-green-600 text-white'
@@ -1002,11 +1002,11 @@ export default function DetalleAnimalPage() {
                   No hay aplicaciones registradas para este animal
                 </h3>
                 <p className="text-gray-500 mb-4">
-                  No se encontraron aplicaciones en la tabla AplicacionesAnimal para el animal #{animal?.id_animal || animal?.$id}
+                  No se encontraron aplicaciones en la tabla AplicacionesAnimal para {animal?.id_animal || animal?.$id}
                 </p>
                 <div className="text-sm text-gray-400 bg-gray-50 p-3 rounded-lg">
                   <p className="font-medium mb-1">Filtros aplicados:</p>
-                  <p>• Id_animal: {animal?.id_animal || animal?.$id}</p>
+                  <p>• Id: {animal?.id_animal || animal?.$id}</p>
                   <p>• Id_producto: debe estar registrado</p>
                 </div>
               </div>
@@ -1132,7 +1132,7 @@ export default function DetalleAnimalPage() {
           
           <div className="absolute bottom-4 left-0 right-0 text-center transform transition-all duration-300 hover:scale-105">
             <p className="text-white text-sm sm:text-base bg-black/50 inline-block px-4 py-2 rounded-full shadow-lg border border-white/10 backdrop-blur-sm">
-              {animal.id_animal || 'Animal'} - {animal.farm_nombre || 'Sin finca'}
+              {animal.id_animal || 'Sin ID'} - {animal.farm_nombre || 'Sin finca'}
             </p>
           </div>
         </div>
@@ -1314,7 +1314,7 @@ export default function DetalleAnimalPage() {
                 ¿Estás seguro de eliminar este animal?
               </h3>
               <p className="text-sm text-gray-500 mb-6">
-                Esta acción no se puede deshacer. Se eliminará permanentemente el registro del animal #{animal?.id_animal || ''}.
+                Esta acción no se puede deshacer. Se eliminará permanentemente el registro de {animal?.id_animal || ''}.
               </p>
             </div>
 
