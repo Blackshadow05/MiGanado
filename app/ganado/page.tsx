@@ -549,8 +549,8 @@ function GanadoContent() {
                       modoSeleccion ? 'mt-6' : ''
                     }`}>
                       <div className="flex-1">
-                        <h3 className="text-sm font-bold text-white mb-0.5">
-                          #{animal.id_animal || 'N/A'}
+                        <h3 className="text-base font-bold text-white mb-0.5">
+                          {animal.id_animal ? animal.id_animal.replace(/^#/, '') : 'N/A'}
                         </h3>
                         <p className="text-white/80 text-xs truncate">
                           {animal.farm_nombre || 'Sin finca'}
