@@ -1,6 +1,6 @@
 {
-  "name": "Sistema de Control Ganadero",
-  "short_name": "Control Ganadero",
+  "name": "Mi Ganado",
+  "short_name": "Mi Ganado",
   "description": "Sistema integral para la gestión y control de operaciones ganaderas",
   "start_url": "/",
   "display": "standalone",
