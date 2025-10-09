@@ -45,6 +45,7 @@ interface AplicacionAnimal {
   Costo?: number
   Cantidad?: string
   Motivo?: string
+  Fecha?: string
   $createdAt?: string
   [key: string]: any
 }
@@ -55,7 +56,7 @@ interface FormularioAplicacion {
   Costo: number | undefined
   Cantidad: string
   Motivo: string
-  $createdAt: string
+  Fecha: string
 }
 
 export default function DetalleAnimalPage() {
@@ -85,7 +86,7 @@ export default function DetalleAnimalPage() {
     Costo: undefined,
     Cantidad: '',
     Motivo: '',
-    $createdAt: new Date().toISOString().split('T')[0]
+    Fecha: new Date().toLocaleDateString('es-CR') // Formato dd/mm/yyyy
   })
   const [formularioEdicionAplicacion, setFormularioEdicionAplicacion] = useState<FormularioAplicacion>({
     Producto: '',
@@ -93,7 +94,7 @@ export default function DetalleAnimalPage() {
     Costo: undefined,
     Cantidad: '',
     Motivo: '',
-    $createdAt: new Date().toISOString().split('T')[0]
+    Fecha: new Date().toLocaleDateString('es-CR') // Formato dd/mm/yyyy
   })
 
   useEffect(() => {
@@ -162,8 +163,76 @@ export default function DetalleAnimalPage() {
 
   const formatearFecha = (fecha: string | undefined) => {
     if (!fecha) return 'No disponible'
-    return new Date(fecha).toLocaleDateString('es-ES')
+    
+    // Si la fecha ya está en formato dd/mm/yyyy, devolverla tal cual
+    if (fecha.includes('/') && fecha.length === 10) {
+      return fecha
+    }
+    
+    // Si es una fecha ISO o en formato YYYY-MM-DD, convertirla
+    try {
+      const date = new Date(fecha)
+      if (isNaN(date.getTime())) {
+        // Intentar parsear como YYYY-MM-DD
+        const [year, month, day] = fecha.split('-')
+        if (year && month && day) {
+          return `${day}/${month}/${year}`
+        }
+        return 'No disponible'
+      }
+      return date.toLocaleDateString('es-CR')
+    } catch {
+      return 'No disponible'
+    }
   }
+
+  const convertirFechaADDMMAAAA = (fechaISO: string) => {
+    if (!fechaISO) return new Date().toLocaleDateString('es-CR')
+    
+    // Si ya viene en formato dd/mm/yyyy, devolverla
+    if (fechaISO.includes('/') && fechaISO.length === 10) {
+      return fechaISO
+    }
+    
+    // Convertir de YYYY-MM-DD a dd/mm/yyyy sin problemas de zona horaria
+    if (fechaISO.includes('-') && fechaISO.length === 10) {
+      const [year, month, day] = fechaISO.split('-')
+      return `${day}/${month}/${year}`
+    }
+    
+    // Para otros formatos, usar Date pero con cuidado
+    try {
+      const date = new Date(fechaISO + 'T00:00:00') // Forzar mediodía para evitar problemas de zona horaria
+      if (isNaN(date.getTime())) {
+        return new Date().toLocaleDateString('es-CR')
+      }
+      return date.toLocaleDateString('es-CR')
+    } catch {
+      return new Date().toLocaleDateString('es-CR')
+    }
+  }
+
+  const convertirFechaAYYYYMMDD = (fechaDDMMYYYY: string) => {
+    if (!fechaDDMMYYYY) return new Date().toISOString().split('T')[0]
+    
+    // Si ya viene en formato YYYY-MM-DD, devolverla
+    if (fechaDDMMYYYY.includes('-') && fechaDDMMYYYY.length === 10) {
+      return fechaDDMMYYYY
+    }
+    
+    // Convertir de dd/mm/yyyy a YYYY-MM-DD sin problemas de zona horaria
+    try {
+      const [day, month, year] = fechaDDMMYYYY.split('/')
+      if (day && month && year) {
+        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+      }
+    } catch {
+      // Si hay error, devolver fecha actual
+    }
+    
+    return new Date().toISOString().split('T')[0]
+  }
+
 
   const formatearMoneda = (valor: number | string | undefined) => {
     if (!valor) return 'No registrado'
@@ -468,7 +537,7 @@ export default function DetalleAnimalPage() {
       Costo: undefined,
       Cantidad: '',
       Motivo: '',
-      $createdAt: new Date().toISOString().split('T')[0]
+      Fecha: new Date().toLocaleDateString('es-CR')
     })
   }
 
@@ -484,6 +553,13 @@ export default function DetalleAnimalPage() {
       setFormularioAplicacion(prev => ({
         ...prev,
         Costo: costoValor
+      }));
+    } else if (campo === 'Fecha') {
+      // Convertir de YYYY-MM-DD a dd/mm/yyyy
+      const fechaConvertida = convertirFechaADDMMAAAA(valor);
+      setFormularioAplicacion(prev => ({
+        ...prev,
+        Fecha: fechaConvertida
       }));
     } else {
       setFormularioAplicacion(prev => ({
@@ -521,7 +597,7 @@ export default function DetalleAnimalPage() {
         Costo: formularioAplicacion.Costo,
         Cantidad: formularioAplicacion.Cantidad || '',
         Motivo: formularioAplicacion.Motivo || '',
-        $createdAt: formularioAplicacion.$createdAt
+        Fecha: formularioAplicacion.Fecha
       }
 
       await databases.createDocument(
@@ -592,12 +668,12 @@ export default function DetalleAnimalPage() {
   const abrirModalEdicionAplicacion = (aplicacion: AplicacionAnimal) => {
     setAplicacionEditando(aplicacion)
     setFormularioEdicionAplicacion({
-      Producto: aplicacion.Producto || '',
+      Producto: aplicacion.Id_producto || '', // Usar Id_producto para que el select muestre el producto correcto
       Id_producto: aplicacion.Id_producto || '',
       Costo: aplicacion.Costo,
       Cantidad: aplicacion.Cantidad || '',
       Motivo: aplicacion.Motivo || '',
-      $createdAt: aplicacion.$createdAt ? new Date(aplicacion.$createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
+      Fecha: aplicacion.Fecha || (aplicacion.$createdAt ? new Date(aplicacion.$createdAt).toLocaleDateString('es-CR') : new Date().toLocaleDateString('es-CR'))
     })
     setModalEdicionAplicacion(true)
   }
@@ -614,6 +690,13 @@ export default function DetalleAnimalPage() {
       setFormularioEdicionAplicacion(prev => ({
         ...prev,
         Costo: costoValor
+      }));
+    } else if (campo === 'Fecha') {
+      // Convertir de YYYY-MM-DD a dd/mm/yyyy
+      const fechaConvertida = convertirFechaADDMMAAAA(valor);
+      setFormularioEdicionAplicacion(prev => ({
+        ...prev,
+        Fecha: fechaConvertida
       }));
     } else {
       setFormularioEdicionAplicacion(prev => ({
@@ -651,7 +734,7 @@ export default function DetalleAnimalPage() {
         Costo: formularioEdicionAplicacion.Costo,
         Cantidad: formularioEdicionAplicacion.Cantidad || '',
         Motivo: formularioEdicionAplicacion.Motivo || '',
-        $createdAt: formularioEdicionAplicacion.$createdAt
+        Fecha: formularioEdicionAplicacion.Fecha
       }
 
       await databases.updateDocument(
@@ -1029,23 +1112,32 @@ export default function DetalleAnimalPage() {
                             </h4>
                           </div>
                           
-                          {/* Información simplificada */}
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 text-sm">
-                            <div className="flex items-center">
-                              <span className="font-medium text-gray-600 mr-2">Cantidad:</span>
-                              <span className="text-gray-900">{aplicacion.Cantidad || 'No especificada'}</span>
+                          {/* Información detallada */}
+                          <div className="space-y-3">
+                            {/* Primera fila: Cantidad, Costo, Fecha */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                              <div className="flex items-center">
+                                <span className="font-medium text-gray-600 mr-2">Cantidad:</span>
+                                <span className="text-gray-900">{aplicacion.Cantidad || 'No especificada'}</span>
+                              </div>
+                              <div className="flex items-center">
+                                <span className="font-medium text-gray-600 mr-2">Costo:</span>
+                                <span className="text-gray-900 font-semibold">{formatearMoneda(aplicacion.Costo)}</span>
+                              </div>
+                              <div className="flex items-center">
+                                <span className="font-medium text-gray-600 mr-2">Fecha:</span>
+                                <span className="text-gray-900">{formatearFecha(aplicacion.Fecha)}</span>
+                              </div>
                             </div>
-                            <div className="flex items-center">
-                              <span className="font-medium text-gray-600 mr-2">Costo:</span>
-                              <span className="text-gray-900 font-semibold">{formatearMoneda(aplicacion.Costo)}</span>
-                            </div>
-                            <div className="flex items-center">
-                              <span className="font-medium text-gray-600 mr-2">Fecha:</span>
-                              <span className="text-gray-900">{formatearFecha(aplicacion.$createdAt)}</span>
-                            </div>
-                            <div className="flex items-center lg:col-span-2">
-                              <span className="font-medium text-gray-600 mr-2">Motivo:</span>
-                              <span className="text-gray-900 truncate">{aplicacion.Motivo || 'No especificado'}</span>
+                            
+                            {/* Segunda fila: Motivo completo */}
+                            <div className="text-sm">
+                              <div className="flex items-start">
+                                <span className="font-medium text-gray-600 mr-2 mt-0.5">Motivo:</span>
+                                <span className="text-gray-900 flex-1 break-words">
+                                  {aplicacion.Motivo || 'No especificado'}
+                                </span>
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -1518,8 +1610,8 @@ export default function DetalleAnimalPage() {
                 </label>
                 <input
                   type="date"
-                  value={formularioAplicacion.$createdAt}
-                  onChange={(e) => manejarCambioAplicacion('$createdAt', e.target.value)}
+                  value={convertirFechaAYYYYMMDD(formularioAplicacion.Fecha)}
+                  onChange={(e) => manejarCambioAplicacion('Fecha', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white"
                 />
               </div>
@@ -1628,8 +1720,8 @@ export default function DetalleAnimalPage() {
                 </label>
                 <input
                   type="date"
-                  value={formularioEdicionAplicacion.$createdAt}
-                  onChange={(e) => manejarCambioEdicionAplicacion('$createdAt', e.target.value)}
+                  value={convertirFechaAYYYYMMDD(formularioEdicionAplicacion.Fecha)}
+                  onChange={(e) => manejarCambioEdicionAplicacion('Fecha', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white"
                 />
               </div>
