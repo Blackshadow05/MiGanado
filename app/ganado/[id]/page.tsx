@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { databases, DATABASE_ID, GANADO_COLLECTION_ID, FINCA_COLLECTION_ID, APLICACIONES_COLLECTION_ID, APLICACIONESANIMAL_COLLECTION_ID } from '@/lib/appwrite'
 import { Query } from 'appwrite'
@@ -12,21 +12,19 @@ interface Animal {
   peso_entrada?: number
   precio_kg?: number
   fecha_compra?: string
-  Precio_compra?: number
+  Precio_compra?: number | string
   farm_nombre?: string
   farm_id?: string
   precio_kg_venta?: number
-  peso_salida?: number
-  Precio_venta?: number
+  peso_salida?: number | string
+  Precio_venta?: number | string
   Imagen?: string
   fecha_venta?: string
-  [key: string]: any
 }
 
 interface Finca {
   $id: string
   nombre?: string
-  [key: string]: any
 }
 
 interface Producto {
@@ -34,7 +32,6 @@ interface Producto {
   'Nombre'?: string
   Tipo?: string
   Descripcion?: string
-  [key: string]: any
 }
 
 interface AplicacionAnimal {
@@ -47,7 +44,6 @@ interface AplicacionAnimal {
   Motivo?: string
   Fecha?: string
   $createdAt?: string
-  [key: string]: any
 }
 
 interface FormularioAplicacion {
@@ -80,22 +76,19 @@ export default function DetalleAnimalPage() {
   const [modalEdicionAplicacion, setModalEdicionAplicacion] = useState(false)
   const [aplicacionEditando, setAplicacionEditando] = useState<AplicacionAnimal | null>(null)
   const [aplicacionAEliminar, setAplicacionAEliminar] = useState<AplicacionAnimal | null>(null)
-  const [formularioAplicacion, setFormularioAplicacion] = useState<FormularioAplicacion>({
+
+  // Memoizar formularios iniciales
+  const formularioInicial = useMemo(() => ({
     Producto: '',
     Id_producto: '',
     Costo: undefined,
     Cantidad: '',
     Motivo: '',
     Fecha: new Date().toLocaleDateString('es-CR') // Formato dd/mm/yyyy
-  })
-  const [formularioEdicionAplicacion, setFormularioEdicionAplicacion] = useState<FormularioAplicacion>({
-    Producto: '',
-    Id_producto: '',
-    Costo: undefined,
-    Cantidad: '',
-    Motivo: '',
-    Fecha: new Date().toLocaleDateString('es-CR') // Formato dd/mm/yyyy
-  })
+  }), [])
+
+  const [formularioAplicacion, setFormularioAplicacion] = useState<FormularioAplicacion>(formularioInicial)
+  const [formularioEdicionAplicacion, setFormularioEdicionAplicacion] = useState<FormularioAplicacion>(formularioInicial)
 
   useEffect(() => {
     if (params.id) {
@@ -113,7 +106,7 @@ export default function DetalleAnimalPage() {
     }
   }, [animal, params.id])
 
-  const cargarAnimal = async (id: string, intentos = 3) => {
+  const cargarAnimal = useCallback(async (id: string, intentos = 3) => {
     try {
       setLoading(true)
       console.log('Cargando animal con ID:', id)
@@ -140,7 +133,7 @@ export default function DetalleAnimalPage() {
       let errorMessage = 'Error al cargar el animal'
       if (err instanceof Error) {
         errorMessage = err.message
-        
+
         if (err.name === 'TypeError' && err.message.includes('Failed to fetch')) {
           errorMessage = 'Error de conexión. Verifica tu conexión a internet y que el servidor esté disponible.'
         } else if (err.name === 'AbortError') {
@@ -159,16 +152,16 @@ export default function DetalleAnimalPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [databases, DATABASE_ID, GANADO_COLLECTION_ID, setLoading, setError, setAnimal, router, params.id])
 
-  const formatearFecha = (fecha: string | undefined) => {
+  const formatearFecha = useCallback((fecha: string | undefined): string => {
     if (!fecha) return 'No disponible'
-    
+
     // Si la fecha ya está en formato dd/mm/yyyy, devolverla tal cual
     if (fecha.includes('/') && fecha.length === 10) {
       return fecha
     }
-    
+
     // Si es una fecha ISO o en formato YYYY-MM-DD, convertirla
     try {
       const date = new Date(fecha)
@@ -184,22 +177,22 @@ export default function DetalleAnimalPage() {
     } catch {
       return 'No disponible'
     }
-  }
+  }, [])
 
-  const convertirFechaADDMMAAAA = (fechaISO: string) => {
+  const convertirFechaADDMMAAAA = useCallback((fechaISO: string): string => {
     if (!fechaISO) return new Date().toLocaleDateString('es-CR')
-    
+
     // Si ya viene en formato dd/mm/yyyy, devolverla
     if (fechaISO.includes('/') && fechaISO.length === 10) {
       return fechaISO
     }
-    
+
     // Convertir de YYYY-MM-DD a dd/mm/yyyy sin problemas de zona horaria
     if (fechaISO.includes('-') && fechaISO.length === 10) {
       const [year, month, day] = fechaISO.split('-')
       return `${day}/${month}/${year}`
     }
-    
+
     // Para otros formatos, usar Date pero con cuidado
     try {
       const date = new Date(fechaISO + 'T00:00:00') // Forzar mediodía para evitar problemas de zona horaria
@@ -210,16 +203,16 @@ export default function DetalleAnimalPage() {
     } catch {
       return new Date().toLocaleDateString('es-CR')
     }
-  }
+  }, [])
 
-  const convertirFechaAYYYYMMDD = (fechaDDMMYYYY: string) => {
+  const convertirFechaAYYYYMMDD = useCallback((fechaDDMMYYYY: string): string => {
     if (!fechaDDMMYYYY) return new Date().toISOString().split('T')[0]
-    
+
     // Si ya viene en formato YYYY-MM-DD, devolverla
     if (fechaDDMMYYYY.includes('-') && fechaDDMMYYYY.length === 10) {
       return fechaDDMMYYYY
     }
-    
+
     // Convertir de dd/mm/yyyy a YYYY-MM-DD sin problemas de zona horaria
     try {
       const [day, month, year] = fechaDDMMYYYY.split('/')
@@ -229,159 +222,158 @@ export default function DetalleAnimalPage() {
     } catch {
       // Si hay error, devolver fecha actual
     }
-    
+
     return new Date().toISOString().split('T')[0]
-  }
+  }, [])
 
-
-  const formatearMoneda = (valor: number | string | undefined) => {
+  const formatearMoneda = useCallback((valor: number | string | undefined): string => {
     if (!valor) return 'No registrado'
-    
+
     const numero = typeof valor === 'number' ? valor : parseFloat(valor as string)
     if (isNaN(numero)) return 'No registrado'
-    
-    return `₡${numero.toLocaleString('es-CR')}`
-  }
 
-  const cargarFincas = async () => {
+    return `₡${numero.toLocaleString('es-CR')}`
+  }, [])
+
+  const cargarFincas = useCallback(async () => {
     try {
       if (!DATABASE_ID || !FINCA_COLLECTION_ID) return
-      
+
       const response = await databases.listDocuments(
         DATABASE_ID,
         FINCA_COLLECTION_ID
       )
-      
+
       setFincas(response.documents as Finca[])
     } catch (err) {
       console.error('Error al cargar fincas:', err)
     }
-  }
+  }, [databases, DATABASE_ID, FINCA_COLLECTION_ID, setFincas])
 
-  const cargarProductos = async () => {
+  const cargarProductos = useCallback(async () => {
     try {
       if (!DATABASE_ID || !APLICACIONES_COLLECTION_ID) return
-      
+
       const response = await databases.listDocuments(
         DATABASE_ID,
         APLICACIONES_COLLECTION_ID
       )
-      
+
       setProductos(response.documents as Producto[])
     } catch (err) {
       console.error('Error al cargar productos:', err)
     }
-  }
+  }, [databases, DATABASE_ID, APLICACIONES_COLLECTION_ID, setProductos])
 
-  const cargarAplicaciones = async (animalId: string) => {
+  const cargarAplicaciones = useCallback(async (animalId: string) => {
     try {
       if (!DATABASE_ID || !APLICACIONESANIMAL_COLLECTION_ID) return
-      
+
       // Buscar aplicaciones por el ID del animal (usar el id_animal si existe, sino el $id)
       const idAnimalBusqueda = animal?.id_animal || animalId
-      
+
       const response = await databases.listDocuments(
         DATABASE_ID,
         APLICACIONESANIMAL_COLLECTION_ID,
         [Query.equal('Id_animal', idAnimalBusqueda)]
       )
-      
+
       // Filtrar aplicaciones que tengan Id_producto válido
       let aplicacionesFiltradas = response.documents.filter(doc =>
         doc.Id_producto && doc.Id_producto !== ''
       ) as AplicacionAnimal[]
-      
+
       // Ordenar aplicaciones de más reciente a más antiguo por $createdAt
       aplicacionesFiltradas = aplicacionesFiltradas.sort((a, b) => {
         const dateA = a.$createdAt ? new Date(a.$createdAt).getTime() : 0;
         const dateB = b.$createdAt ? new Date(b.$createdAt).getTime() : 0;
         return dateB - dateA;
       });
-      
+
       setAplicaciones(aplicacionesFiltradas)
     } catch (err) {
       console.error('Error al cargar aplicaciones:', err)
     }
-  }
+  }, [animal, params.id, databases, DATABASE_ID, APLICACIONESANIMAL_COLLECTION_ID, setAplicaciones])
 
-  const toggleImagenExpandida = () => {
-    setImagenExpandida(!imagenExpandida)
-  }
+  const toggleImagenExpandida = useCallback(() => {
+    setImagenExpandida(prev => !prev)
+  }, [])
 
-  const abrirModalEdicion = () => {
+  const abrirModalEdicion = useCallback(() => {
     if (animal) {
       setAnimalEditando({ ...animal })
       setModalEdicion(true)
     }
-  }
+  }, [animal, setAnimalEditando, setModalEdicion])
 
-  const cerrarModalEdicion = () => {
+  const cerrarModalEdicion = useCallback(() => {
     setModalEdicion(false)
     setAnimalEditando(null)
-  }
+  }, [])
 
-  const abrirModalEliminacion = () => {
+  const abrirModalEliminacion = useCallback(() => {
     setModalEliminacion(true)
-  }
+  }, [])
 
-  const cerrarModalEliminacion = () => {
+  const cerrarModalEliminacion = useCallback(() => {
     setModalEliminacion(false)
-  }
+  }, [])
 
-  const abrirModalVenta = () => {
+  const abrirModalVenta = useCallback(() => {
     if (animal) {
       setAnimalVendiendo({ ...animal })
       setModalVenta(true)
     }
-  }
+  }, [animal, setAnimalVendiendo, setModalVenta])
 
-  const cerrarModalVenta = () => {
+  const cerrarModalVenta = useCallback(() => {
     setModalVenta(false)
     setAnimalVendiendo(null)
-  }
+  }, [])
 
-  const manejarCambioCampo = (campo: string, valor: any) => {
+  const manejarCambioCampo = useCallback((campo: string, valor: string | number | undefined) => {
     if (animalEditando) {
       const nuevoAnimal = {
         ...animalEditando,
         [campo]: valor
       }
-      
+
       // Calcular automáticamente precios totales
       if (campo === 'peso_entrada' || campo === 'precio_kg') {
-        const peso = campo === 'peso_entrada' ? valor : nuevoAnimal.peso_entrada
-        const precioKg = campo === 'precio_kg' ? valor : nuevoAnimal.precio_kg
-        
+        const peso = campo === 'peso_entrada' ? Number(valor) : Number(nuevoAnimal.peso_entrada)
+        const precioKg = campo === 'precio_kg' ? Number(valor) : Number(nuevoAnimal.precio_kg)
+
         if (peso && precioKg) {
           nuevoAnimal.Precio_compra = Math.round(peso * precioKg * 100) / 100
         }
       }
-      
+
       if (campo === 'peso_salida' || campo === 'precio_kg_venta') {
-        const peso = campo === 'peso_salida' ? valor : nuevoAnimal.peso_salida
-        const precioKg = campo === 'precio_kg_venta' ? valor : nuevoAnimal.precio_kg_venta
-        
+        const peso = campo === 'peso_salida' ? Number(valor) : Number(nuevoAnimal.peso_salida)
+        const precioKg = campo === 'precio_kg_venta' ? Number(valor) : Number(nuevoAnimal.precio_kg_venta)
+
         if (peso && precioKg) {
           nuevoAnimal.Precio_venta = Math.round(peso * precioKg * 100) / 100
         }
       }
-      
+
       setAnimalEditando(nuevoAnimal)
     }
-  }
+  }, [animalEditando, setAnimalEditando])
 
-  const guardarCambios = async () => {
+  const guardarCambios = useCallback(async () => {
     if (!animalEditando || !animal) return
 
     try {
       setLoading(true)
-      
+
       // Preparar los datos para Appwrite - convertir números a strings
-      const datosParaActualizar: any = {}
-      
+      const datosParaActualizar: Record<string, string | number> = {}
+
       Object.keys(animalEditando).forEach(key => {
         const valor = animalEditando[key as keyof Animal]
-        
+
         if (typeof valor === 'number') {
           // Convertir números a strings con formato adecuado
           datosParaActualizar[key] = valor.toString()
@@ -390,44 +382,44 @@ export default function DetalleAnimalPage() {
           datosParaActualizar[key] = valor
         }
       })
-      
+
       // Asegurar que los campos tengan el formato correcto para Appwrite según especificación
       if (datosParaActualizar.Precio_compra) {
         // Precio_compra debe ser string
-        datosParaActualizar.Precio_compra = Math.round(parseFloat(datosParaActualizar.Precio_compra)).toString()
+        datosParaActualizar.Precio_compra = Math.round(parseFloat(datosParaActualizar.Precio_compra as string)).toString()
       }
       if (datosParaActualizar.Precio_venta) {
         // Precio_venta debe ser string
-        datosParaActualizar.Precio_venta = Math.round(parseFloat(datosParaActualizar.Precio_venta)).toString()
+        datosParaActualizar.Precio_venta = Math.round(parseFloat(datosParaActualizar.Precio_venta as string)).toString()
       }
       if (datosParaActualizar.precio_kg) {
         // precio_kg debe ser número (mantener como número)
-        datosParaActualizar.precio_kg = Math.round(parseFloat(datosParaActualizar.precio_kg))
+        datosParaActualizar.precio_kg = Math.round(parseFloat(datosParaActualizar.precio_kg as string))
       }
       if (datosParaActualizar.precio_kg_venta) {
         // precio_kg_venta debe ser número (mantener como número)
-        datosParaActualizar.precio_kg_venta = Math.round(parseFloat(datosParaActualizar.precio_kg_venta))
+        datosParaActualizar.precio_kg_venta = Math.round(parseFloat(datosParaActualizar.precio_kg_venta as string))
       }
       if (datosParaActualizar.peso_entrada) {
         // peso_entrada debe ser número (mantener como número)
-        datosParaActualizar.peso_entrada = Math.round(parseFloat(datosParaActualizar.peso_entrada))
+        datosParaActualizar.peso_entrada = Math.round(parseFloat(datosParaActualizar.peso_entrada as string))
       }
       if (datosParaActualizar.peso_salida) {
         // peso_salida debe ser string
-        datosParaActualizar.peso_salida = Math.round(parseFloat(datosParaActualizar.peso_salida)).toString()
+        datosParaActualizar.peso_salida = Math.round(parseFloat(datosParaActualizar.peso_salida as string)).toString()
       }
-      
+
       const response = await databases.updateDocument(
         DATABASE_ID,
         GANADO_COLLECTION_ID,
         animal.$id,
         datosParaActualizar
       )
-      
+
       setAnimal(response as Animal)
       setMensajeExito('Animal actualizado exitosamente')
       cerrarModalEdicion()
-      
+
       setTimeout(() => setMensajeExito(null), 3000)
     } catch (err) {
       console.error('Error al actualizar animal:', err)
@@ -435,9 +427,9 @@ export default function DetalleAnimalPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [animalEditando, animal, cerrarModalEdicion, setLoading, setMensajeExito, setError, databases, DATABASE_ID, GANADO_COLLECTION_ID])
 
-  const eliminarAnimal = async () => {
+  const eliminarAnimal = useCallback(async () => {
     if (!animal) return
 
     try {
@@ -447,10 +439,10 @@ export default function DetalleAnimalPage() {
         GANADO_COLLECTION_ID,
         animal.$id
       )
-      
+
       setMensajeExito('Animal eliminado exitosamente')
       cerrarModalEliminacion()
-      
+
       setTimeout(() => {
         router.push('/ganado')
       }, 2000)
@@ -459,35 +451,35 @@ export default function DetalleAnimalPage() {
       setError('Error al eliminar el animal')
       setLoading(false)
     }
-  }
+  }, [animal, cerrarModalEliminacion, router, setLoading, setMensajeExito, setError, databases, DATABASE_ID, GANADO_COLLECTION_ID])
 
-  const manejarCambioVenta = (campo: string, valor: any) => {
+  const manejarCambioVenta = useCallback((campo: string, valor: string | number | undefined) => {
     if (animalVendiendo) {
       const nuevoAnimal = {
         ...animalVendiendo,
         [campo]: valor
       }
-      
+
       // Calcular automáticamente el precio de venta
       if (campo === 'peso_salida' || campo === 'precio_kg_venta') {
-        const peso = campo === 'peso_salida' ? valor : nuevoAnimal.peso_salida
-        const precioKg = campo === 'precio_kg_venta' ? valor : nuevoAnimal.precio_kg_venta
-        
+        const peso = campo === 'peso_salida' ? Number(valor) : Number(nuevoAnimal.peso_salida)
+        const precioKg = campo === 'precio_kg_venta' ? Number(valor) : Number(nuevoAnimal.precio_kg_venta)
+
         if (peso && precioKg) {
           nuevoAnimal.Precio_venta = Math.round(peso * precioKg * 100) / 100
         }
       }
-      
+
       setAnimalVendiendo(nuevoAnimal)
     }
-  }
+  }, [animalVendiendo, setAnimalVendiendo])
 
-  const guardarVenta = async () => {
+  const guardarVenta = useCallback(async () => {
     if (!animalVendiendo || !animal) return
 
     try {
       setLoading(true)
-      
+
       // Validar campos requeridos
       if (!animalVendiendo.peso_salida || !animalVendiendo.precio_kg_venta || !animalVendiendo.fecha_venta) {
         setMensajeAdvertencia('Por favor complete todos los campos requeridos')
@@ -497,7 +489,7 @@ export default function DetalleAnimalPage() {
       }
 
       // Preparar los datos para Appwrite
-      const datosParaActualizar: any = {
+      const datosParaActualizar: Record<string, string | number> = {
         peso_salida: Math.round(parseFloat(animalVendiendo.peso_salida.toString())).toString(),
         precio_kg_venta: Math.round(parseFloat(animalVendiendo.precio_kg_venta.toString())),
         fecha_venta: animalVendiendo.fecha_venta
@@ -514,49 +506,41 @@ export default function DetalleAnimalPage() {
         animal.$id,
         datosParaActualizar
       )
-      
+
       setAnimal(response as Animal)
-      setMensajeExito('Venta registrada exitosamente')
+      setMensajeExito('Animal vendido exitosamente')
       cerrarModalVenta()
-      
+
       setTimeout(() => setMensajeExito(null), 3000)
     } catch (err) {
-      console.error('Error al registrar venta:', err)
-      setError('Error al registrar la venta')
+      console.error('Error al vender animal:', err)
+      setError('Error al vender el animal')
     } finally {
       setLoading(false)
     }
-  }
+  }, [animalVendiendo, animal, cerrarModalVenta, setLoading, setMensajeAdvertencia, setMensajeExito, databases, DATABASE_ID, GANADO_COLLECTION_ID, router])
 
-  // Funciones para manejar aplicaciones
-  const abrirModalAplicacion = () => {
+  const abrirModalAplicacion = useCallback(() => {
     setModalAplicacion(true)
-    setFormularioAplicacion({
-      Producto: '',
-      Id_producto: '',
-      Costo: undefined,
-      Cantidad: '',
-      Motivo: '',
-      Fecha: new Date().toLocaleDateString('es-CR')
-    })
-  }
+    setFormularioAplicacion(formularioInicial)
+  }, [formularioInicial, setModalAplicacion, setFormularioAplicacion])
 
-  const cerrarModalAplicacion = () => {
+  const cerrarModalAplicacion = useCallback(() => {
     setModalAplicacion(false)
     setAplicacionEditando(null)
-  }
+  }, [setModalAplicacion, setAplicacionEditando])
 
-  const manejarCambioAplicacion = (campo: string, valor: any) => {
+  const manejarCambioAplicacion = useCallback((campo: string, valor: string | number | undefined) => {
     if (campo === 'Costo') {
       // Manejar específicamente el campo Costo para permitir valores vacíos
-      const costoValor = valor === '' || valor === null || valor === undefined ? undefined : parseFloat(valor);
+      const costoValor = valor === '' || valor === null || valor === undefined ? undefined : parseFloat(valor as string);
       setFormularioAplicacion(prev => ({
         ...prev,
         Costo: costoValor
       }));
     } else if (campo === 'Fecha') {
       // Convertir de YYYY-MM-DD a dd/mm/yyyy
-      const fechaConvertida = convertirFechaADDMMAAAA(valor);
+      const fechaConvertida = convertirFechaADDMMAAAA(valor as string);
       setFormularioAplicacion(prev => ({
         ...prev,
         Fecha: fechaConvertida
@@ -570,7 +554,7 @@ export default function DetalleAnimalPage() {
 
     // Si cambia el producto, actualizar también el Id_producto
     if (campo === 'Producto') {
-      const productoSeleccionado = productos.find(p => p.$id === valor)
+      const productoSeleccionado = productos.find(p => p.$id === (valor as string))
       if (productoSeleccionado) {
         setFormularioAplicacion(prev => ({
           ...prev,
@@ -578,9 +562,9 @@ export default function DetalleAnimalPage() {
         }))
       }
     }
-  }
+  }, [productos, convertirFechaADDMMAAAA])
 
-  const guardarAplicacion = async () => {
+  const guardarAplicacion = useCallback(async () => {
     if (!animal || !formularioAplicacion.Producto || !formularioAplicacion.Id_producto) {
       setMensajeAdvertencia('Por favor seleccione un producto')
       setTimeout(() => setMensajeAdvertencia(null), 3000)
@@ -589,50 +573,55 @@ export default function DetalleAnimalPage() {
 
     try {
       setLoading(true)
-      
-      const nuevaAplicacion = {
-        Producto: productos.find(p => p.$id === formularioAplicacion.Producto)?.['Nombre'] || '',
+
+      const datosAplicacion: Record<string, string | number> = {
+        Producto: productos.find((p: Producto) => p.$id === formularioAplicacion.Producto)?.['Nombre'] || '',
         Id_animal: animal.id_animal || animal.$id,
         Id_producto: formularioAplicacion.Id_producto,
-        Costo: formularioAplicacion.Costo,
         Cantidad: formularioAplicacion.Cantidad || '',
         Motivo: formularioAplicacion.Motivo || '',
-        Fecha: formularioAplicacion.Fecha
+        Fecha: convertirFechaAYYYYMMDD(formularioAplicacion.Fecha)
       }
 
-      await databases.createDocument(
+      // Solo incluir Costo si tiene un valor definido
+      if (formularioAplicacion.Costo !== undefined) {
+        datosAplicacion.Costo = formularioAplicacion.Costo
+      }
+
+      const response = await databases.createDocument(
         DATABASE_ID,
         APLICACIONESANIMAL_COLLECTION_ID,
         'unique()',
-        nuevaAplicacion
+        datosAplicacion
       )
+
+      console.log('Aplicación creada:', response)
+      setFormularioAplicacion(formularioInicial)
+      setModalAplicacion(false)
+      setMensajeExito('Aplicación agregada exitosamente')
 
       // Recargar aplicaciones
       if (params.id) {
         cargarAplicaciones(params.id as string)
       }
-      
-      setMensajeExito('Aplicación registrada exitosamente')
-      cerrarModalAplicacion()
-      
+
       setTimeout(() => setMensajeExito(null), 3000)
     } catch (err) {
-      console.error('Error al registrar aplicación:', err)
-      setError('Error al registrar la aplicación')
+      console.error('Error al guardar aplicación:', err)
+      setError('Error al guardar la aplicación')
     } finally {
       setLoading(false)
     }
-  }
+  }, [animal, formularioAplicacion, productos, formularioInicial, params.id, cargarAplicaciones, convertirFechaAYYYYMMDD, setLoading, setMensajeAdvertencia, setMensajeExito, setFormularioAplicacion, setModalAplicacion])
 
-  const eliminarAplicacion = async (aplicacionId: string) => {
-    // Encontrar la aplicación que se va a eliminar
-    const aplicacion = aplicaciones.find(a => a.$id === aplicacionId);
+  const eliminarAplicacion = useCallback(async (aplicacionId: string) => {
+    const aplicacion = aplicaciones.find((a: AplicacionAnimal) => a.$id === aplicacionId);
     if (aplicacion) {
       setAplicacionAEliminar(aplicacion);
     }
-  }
+  }, [aplicaciones, setAplicacionAEliminar])
 
-  const confirmarEliminarAplicacion = async () => {
+  const confirmarEliminarAplicacion = useCallback(async () => {
     if (!aplicacionAEliminar) return;
 
     try {
@@ -644,13 +633,12 @@ export default function DetalleAnimalPage() {
         aplicacionAEliminar.$id
       )
 
-      // Recargar aplicaciones
       if (params.id) {
         cargarAplicaciones(params.id as string)
       }
       
       setMensajeExito('Aplicación eliminada exitosamente')
-      cerrarModalConfirmacionEliminacion()
+      setAplicacionAEliminar(null)
       setTimeout(() => setMensajeExito(null), 3000)
     } catch (err) {
       console.error('Error al eliminar aplicación:', err)
@@ -659,16 +647,12 @@ export default function DetalleAnimalPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [aplicacionAEliminar, params.id, cargarAplicaciones, setLoading, setMensajeExito, setMensajeAdvertencia, setAplicacionAEliminar])
 
-  const cerrarModalConfirmacionEliminacion = () => {
-    setAplicacionAEliminar(null)
-  }
-
-  const abrirModalEdicionAplicacion = (aplicacion: AplicacionAnimal) => {
+  const abrirModalEdicionAplicacion = useCallback((aplicacion: AplicacionAnimal) => {
     setAplicacionEditando(aplicacion)
     setFormularioEdicionAplicacion({
-      Producto: aplicacion.Id_producto || '', // Usar Id_producto para que el select muestre el producto correcto
+      Producto: aplicacion.Id_producto || '',
       Id_producto: aplicacion.Id_producto || '',
       Costo: aplicacion.Costo,
       Cantidad: aplicacion.Cantidad || '',
@@ -676,24 +660,22 @@ export default function DetalleAnimalPage() {
       Fecha: aplicacion.Fecha || (aplicacion.$createdAt ? new Date(aplicacion.$createdAt).toLocaleDateString('es-CR') : new Date().toLocaleDateString('es-CR'))
     })
     setModalEdicionAplicacion(true)
-  }
+  }, [setModalEdicionAplicacion, setAplicacionEditando])
 
-  const cerrarModalEdicionAplicacion = () => {
+  const cerrarModalEdicionAplicacion = useCallback(() => {
     setModalEdicionAplicacion(false)
     setAplicacionEditando(null)
-  }
+  }, [setAplicacionEditando, setFormularioEdicionAplicacion, setModalEdicionAplicacion])
 
-  const manejarCambioEdicionAplicacion = (campo: string, valor: any) => {
+  const manejarCambioEdicionAplicacion = useCallback((campo: string, valor: string | number | undefined) => {
     if (campo === 'Costo') {
-      // Manejar específicamente el campo Costo para permitir valores vacíos
-      const costoValor = valor === '' || valor === null || valor === undefined ? undefined : parseFloat(valor);
+      const costoValor = valor === '' || valor === null || valor === undefined ? undefined : parseFloat(valor as string);
       setFormularioEdicionAplicacion(prev => ({
         ...prev,
         Costo: costoValor
       }));
     } else if (campo === 'Fecha') {
-      // Convertir de YYYY-MM-DD a dd/mm/yyyy
-      const fechaConvertida = convertirFechaADDMMAAAA(valor);
+      const fechaConvertida = convertirFechaADDMMAAAA(valor as string);
       setFormularioEdicionAplicacion(prev => ({
         ...prev,
         Fecha: fechaConvertida
@@ -705,9 +687,8 @@ export default function DetalleAnimalPage() {
       }));
     }
 
-    // Si cambia el producto, actualizar también el Id_producto
     if (campo === 'Producto') {
-      const productoSeleccionado = productos.find(p => p.$id === valor)
+      const productoSeleccionado = productos.find((p: Producto) => p.$id === (valor as string))
       if (productoSeleccionado) {
         setFormularioEdicionAplicacion(prev => ({
           ...prev,
@@ -716,9 +697,9 @@ export default function DetalleAnimalPage() {
         }))
       }
     }
-  }
+  }, [productos, convertirFechaADDMMAAAA])
 
-  const guardarEdicionAplicacion = async () => {
+  const guardarEdicionAplicacion = useCallback(async () => {
     if (!aplicacionEditando || !formularioEdicionAplicacion.Producto || !formularioEdicionAplicacion.Id_producto) {
       setMensajeAdvertencia('Por favor seleccione un producto')
       setTimeout(() => setMensajeAdvertencia(null), 3000)
@@ -728,13 +709,16 @@ export default function DetalleAnimalPage() {
     try {
       setLoading(true)
       
-      const datosActualizados = {
-        Producto: productos.find(p => p.$id === formularioEdicionAplicacion.Producto)?.['Nombre'] || formularioEdicionAplicacion.Producto,
+      const datosActualizados: Record<string, string | number> = {
+        Producto: productos.find((p: Producto) => p.$id === formularioEdicionAplicacion.Producto)?.['Nombre'] || formularioEdicionAplicacion.Producto,
         Id_producto: formularioEdicionAplicacion.Id_producto,
-        Costo: formularioEdicionAplicacion.Costo,
         Cantidad: formularioEdicionAplicacion.Cantidad || '',
         Motivo: formularioEdicionAplicacion.Motivo || '',
-        Fecha: formularioEdicionAplicacion.Fecha
+        Fecha: convertirFechaAYYYYMMDD(formularioEdicionAplicacion.Fecha)
+      }
+
+      if (formularioEdicionAplicacion.Costo !== undefined) {
+        datosActualizados.Costo = formularioEdicionAplicacion.Costo
       }
 
       await databases.updateDocument(
@@ -744,14 +728,13 @@ export default function DetalleAnimalPage() {
         datosActualizados
       )
 
-      // Recargar aplicaciones
       if (params.id) {
         cargarAplicaciones(params.id as string)
       }
       
       setMensajeExito('Aplicación actualizada exitosamente')
-      cerrarModalEdicionAplicacion()
-      
+      setModalEdicionAplicacion(false)
+      setAplicacionEditando(null)
       setTimeout(() => setMensajeExito(null), 3000)
     } catch (err) {
       console.error('Error al actualizar aplicación:', err)
@@ -760,7 +743,7 @@ export default function DetalleAnimalPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [aplicacionEditando, formularioEdicionAplicacion, productos, params.id, cargarAplicaciones, convertirFechaAYYYYMMDD, setLoading, setMensajeAdvertencia, setMensajeExito])
 
   if (loading) {
     return (
@@ -1026,14 +1009,14 @@ export default function DetalleAnimalPage() {
                 </span>
                 <span className={`
                   text-xl font-bold
-                  ${animal.Precio_venta && animal.Precio_compra && animal.Precio_venta >= (animal.Precio_compra + aplicaciones.reduce((total, app) => total + (app.Costo || 0), 0)) ? 'text-green-600' :
+                  ${animal.Precio_venta && animal.Precio_compra && (typeof animal.Precio_venta === 'number' ? animal.Precio_venta : parseFloat(animal.Precio_venta as string)) >= ((typeof animal.Precio_compra === 'number' ? animal.Precio_compra : parseFloat(animal.Precio_compra as string)) + aplicaciones.reduce((total, app) => total + (app.Costo || 0), 0)) ? 'text-green-600' :
                     animal.Precio_venta ? 'text-red-600' : 'text-blue-600'}
                 `}>
                   {animal.Precio_venta && animal.Precio_compra ? (
                     <>
-                      {formatearMoneda(animal.Precio_venta - animal.Precio_compra - aplicaciones.reduce((total, app) => total + (app.Costo || 0), 0))}
+                      {formatearMoneda((typeof animal.Precio_venta === 'number' ? animal.Precio_venta : parseFloat(animal.Precio_venta as string)) - (typeof animal.Precio_compra === 'number' ? animal.Precio_compra : parseFloat(animal.Precio_compra as string)) - aplicaciones.reduce((total, app) => total + (app.Costo || 0), 0))}
                       <span className="text-sm ml-2">
-                        ({((animal.Precio_venta - (animal.Precio_compra || 0) - aplicaciones.reduce((total, app) => total + (app.Costo || 0), 0)) / ((animal.Precio_compra || 1) + aplicaciones.reduce((total, app) => total + (app.Costo || 0), 0)) * 100).toFixed(1)}%)
+                        ({(((typeof animal.Precio_venta === 'number' ? animal.Precio_venta : parseFloat(animal.Precio_venta as string)) - ((typeof animal.Precio_compra === 'number' ? animal.Precio_compra : parseFloat(animal.Precio_compra as string)) || 0) - aplicaciones.reduce((total, app) => total + (app.Costo || 0), 0)) / (((typeof animal.Precio_compra === 'number' ? animal.Precio_compra : parseFloat(animal.Precio_compra as string)) || 1) + aplicaciones.reduce((total, app) => total + (app.Costo || 0), 0)) * 100).toFixed(1)}%)
                       </span>
                     </>
                   ) : (
@@ -1202,7 +1185,7 @@ export default function DetalleAnimalPage() {
       >
         <div className="relative max-w-7xl w-full h-full flex items-center justify-center">
           <button
-            onClick={toggleImagenExpandida}
+            onClick={(e) => { e.stopPropagation(); toggleImagenExpandida(); }}
             className="absolute top-4 right-4 text-white hover:text-gray-300 transition-all duration-300 z-10 bg-black/50 hover:bg-black/70 rounded-full p-2 transform hover:scale-110 hover:rotate-90"
             aria-label="Cerrar imagen expandida"
           >
@@ -1272,6 +1255,11 @@ export default function DetalleAnimalPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-gray-900 bg-white"
                 >
                   <option value="">Seleccione una finca</option>
+                  {animalEditando.farm_id && !fincas.some(f => f.$id === animalEditando.farm_id) && (
+                    <option value={animalEditando.farm_id}>
+                      {animalEditando.farm_nombre || 'Finca no disponible'}
+                    </option>
+                  )}
                   {fincas.map((finca) => (
                     <option key={finca.$id} value={finca.$id}>
                       {finca.nombre}
@@ -1496,8 +1484,8 @@ export default function DetalleAnimalPage() {
                 </label>
                 <input
                   type="text"
-                  value={animalVendiendo.Precio_venta ? `₡${animalVendiendo.Precio_venta.toLocaleString('es-CR')}` : '₡0'}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 font-semibold"
+                  value={animalVendiendo.Precio_venta !== undefined ? `₡${animalVendiendo.Precio_venta.toLocaleString('es-CR')}` : '₡0'}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 font-semibold text-gray-900"
                   readOnly
                   title="Calculado automáticamente: Peso salida × Precio por kg venta"
                 />
@@ -1767,7 +1755,7 @@ export default function DetalleAnimalPage() {
 
             <div className="flex justify-end space-x-3">
               <button
-                onClick={cerrarModalConfirmacionEliminacion}
+                onClick={() => setAplicacionAEliminar(null)}
                 className="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors"
               >
                 Cancelar
